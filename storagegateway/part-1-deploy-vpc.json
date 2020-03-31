@@ -1,0 +1,218 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+
+                {
+                    "Label": { "default": "AWS - Network configuration"},
+                    "Parameters": [ "EnvironmentName", "VpcCIDR", "PublicSubnet1CIDR"]
+                }
+            ],
+
+		"ParameterLabels" : { "VpcCIDR" : { "default" : "Which VPC should this be deployed to?" } }
+		}
+	},
+
+	"Parameters": {
+        "EnvironmentName": {
+            "Description": "An environment name that will be prefixed to resource names",
+            "Type": "String",
+            "Default": "STG316"
+        },
+        "VpcCIDR": {
+            "Description": "Please enter the IP range (CIDR notation) for this VPC",
+            "Type": "String",
+            "Default": "192.168.0.0/16"
+        },
+        "PublicSubnet1CIDR": {
+            "Description": "Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone",
+            "Type": "String",
+            "Default": "192.168.10.0/24"
+        }
+
+	},
+
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": { "Ref": "VpcCIDR"},
+                "EnableDnsSupport": true,
+                "EnableDnsHostnames": true,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": { "Ref": "EnvironmentName"}
+                    }
+                ]
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "EnvironmentName"
+                        }
+                    }
+                ]
+            }
+        },
+        "InternetGatewayAttachment": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PublicSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": ""
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Ref": "PublicSubnet1CIDR"
+                },
+                "MapPublicIpOnLaunch": true,
+                "Tags": [{ "Key": "Name",  "Value": "STG316 Public Subnet-AZ1" }]
+            }
+        },
+
+        "PublicRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Sub": "${EnvironmentName} Public Routes"
+                        }
+                    }
+                ]
+            }
+        },
+        "DefaultPublicRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                }
+            }
+        },
+        "PublicSubnet1RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "PublicSubnet1"
+                }
+            }
+        },
+
+
+	"BastionHostSG" : {
+    "Type" : "AWS::EC2::SecurityGroup",
+    "Properties" : {
+     "VpcId": {
+              "Ref": "VPC"
+      },
+     "GroupName" : "STG316-BastionHostSG",
+     "GroupDescription" : "Enable SSH and RDP access",
+     "SecurityGroupIngress" : [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": "3389",
+      "ToPort": "3389",
+      "CidrIp" : "0.0.0.0/0"
+    },
+	{
+       "IpProtocol" : "tcp",
+       "FromPort" : "22",
+       "ToPort" : "22",
+       "CidrIp" : "0.0.0.0/0"
+     } ],
+     "Tags": [ {"Key": "Name", "Value": "STG316-BastionHostSG" } ]
+
+   }
+ },
+
+ "FileGatewaySG" : {
+    "Type" : "AWS::EC2::SecurityGroup",
+    "Properties" : {
+     "VpcId": {
+              "Ref": "VPC"
+      },
+     "GroupDescription" : "File Gateway access security group",
+     "GroupName" : "STG316-FileGatewaySG",
+     "SecurityGroupIngress" : [
+    {
+      "IpProtocol": "tcp",
+      "FromPort": "1",
+      "ToPort": "65534",
+      "CidrIp" : "192.168.0.0/16"
+    }],
+   "Tags": [ {"Key": "Name", "Value": "STG316-FileGatewaySG" } ]
+   }
+ }
+
+
+
+},
+    "Outputs": {
+        "VPC": {
+            "Description": "A reference to the created VPC",
+            "Value": {
+                "Ref": "VPC"
+            }
+        },
+        "PublicSubnets": {
+            "Description": "A list of the public subnets",
+            "Value": {
+                "Fn::Join": [
+                    ",",
+                    [
+                        {
+                            "Ref": "PublicSubnet1"
+                        }
+
+                    ]
+                ]
+            }
+        },
+
+        "PublicSubnet1": {
+            "Description": "A reference to the public subnet in the 1st Availability Zone",
+            "Value": {
+                "Ref": "PublicSubnet1"
+            }
+        }
+
+
+ }
+}
