@@ -7,7 +7,7 @@ Parameters:
     WordpressServerAMIId:
         Description: AMI ID for the Wordpress Image
         Type: String
-        Default: ami-06655da21c9b057ea
+        Default: ami-0706129cd95233283
         
     WordpressServerInstanceType:
         Description: Instance Type for the Wordpress Server
@@ -17,7 +17,7 @@ Parameters:
     MariaDBServerAMIId:
         Description: AMI ID for the MariaDB Image
         Type: String
-        Default: ami-0510b5d8926a84806
+        Default: ami-01a3129a2914c74b1
         
     MariaDBServerInstanceType:
         Description: Instance Type for the MSSQL Server
@@ -27,7 +27,7 @@ Parameters:
     BastionServerAMIId:
         Description: AMI ID for the Bastion Server
         Type: String
-        Default: ami-09d062c8e1df77960
+        Default: ami-0fc4146381042d210
 
     BastionServerInstanceType:
         Description: Instance Type for the Bastion Server
